@@ -3,8 +3,39 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-
+#include <sys/types.h> // For ssize_t
 #include "dependencies/include/GL/glew.h"
+
+
+ssize_t getline(char **lineptr, size_t *n, FILE *stream) {
+    if (lineptr == NULL || n == NULL || stream == NULL) return -1;
+
+    char *buf = *lineptr;
+    size_t size = *n;
+    if (buf == NULL || size == 0) {
+        size = 128;
+        buf = (char *)malloc(size);
+        if (!buf) return -1;
+    }
+
+    if (fgets(buf, (int)size, stream) == NULL) return -1;
+
+    size_t len = strlen(buf);
+    while (len + 1 == size && buf[len - 1] != '\n') {
+        size *= 2;
+        char *temp = (char *)realloc(buf, size);
+        if (!temp) return -1;
+        buf = temp;
+
+        if (fgets(buf + len, (int)(size - len), stream) == NULL) break;
+        len += strlen(buf + len);
+    }
+
+    *lineptr = buf;
+    *n = size;
+    return (ssize_t)len;
+}
+
 
 #define VERTEX_LIMIT 2000
 

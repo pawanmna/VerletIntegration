@@ -3,7 +3,12 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+#ifdef _WIN32
+#include <windows.h>
+#else
 #include <pthread.h>
+#endif
 
 #define GRAVITY -15.0f
 #define THREAD_COUNT 8
@@ -87,18 +92,19 @@ void clearGrid()
     memset(grid, 0, DIMENSION * DIMENSION * DIMENSION * MAX_PER_CELL * sizeof(VerletObject*));
 }
 
+#ifdef _WIN32
+DWORD WINAPI threadFunction(LPVOID arg)
+#else
 void* threadFunction(void* arg)
+#endif
 {
     int thread_id = *((int*)arg);
     int start = 1 + thread_id * ((DIMENSION) / THREAD_COUNT);
     int end = 1 + (thread_id + 1) * ((DIMENSION) / THREAD_COUNT);
 
-    // Handle remaining iterations for the last thread
     if (thread_id == THREAD_COUNT - 1) {
         end += DIMENSION % THREAD_COUNT - 2;
     }
-
-    // printf("%d :: %d -> %d\n", thread_id, start, end);
 
     for (int x = start; x < end; x++) {
         for (int y = 1; y < DIMENSION - 1; y++) {
@@ -119,27 +125,39 @@ void* threadFunction(void* arg)
             }
         }
     }
-    return NULL;
+    return 0;
 }
 
+#ifdef _WIN32
+HANDLE threads[THREAD_COUNT];
+#else
 pthread_t threads[THREAD_COUNT];
+#endif
 int thread_ids[THREAD_COUNT];
 
 void applyGridCollisions(VerletObject* objects, int size)
 {
     clearGrid();
     fillGrid(objects, size);
-    // Start the threads
+
     for (int t = 0; t < THREAD_COUNT; t++) {
         thread_ids[t] = t;
+#ifdef _WIN32
+        threads[t] = CreateThread(NULL, 0, threadFunction, &thread_ids[t], 0, NULL);
+#else
         pthread_create(&threads[t], NULL, threadFunction, (void*)&thread_ids[t]);
+#endif
     }
-    // Wait for threads to finish
+
     for (int t = 0; t < THREAD_COUNT; t++) {
+#ifdef _WIN32
+        WaitForSingleObject(threads[t], INFINITE);
+        CloseHandle(threads[t]);
+#else
         pthread_join(threads[t], NULL);
+#endif
     }
 }
-
 void applyConstraints(VerletObject* objects, int size, mfloat_t* containerPosition)
 {
     // ========= Floor =========

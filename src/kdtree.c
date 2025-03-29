@@ -35,7 +35,7 @@ OF SUCH DAMAGE.
 #include <string.h>
 #include <math.h>
 #include "kdtree.h"
-
+#include <alloca.h>   // For alloca
 #if defined(WIN32) || defined(__WIN32__)
 #include <malloc.h>
 #endif
